@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Streamlit
+.streamlit/
+
+# Model artifacts (keep your real model files local if you want)
+models/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
