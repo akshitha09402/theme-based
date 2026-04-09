@@ -1,4 +1,5 @@
-streamlit>=1.34
-tensorflow>=2.13
-numpy>=1.23
-pillow>=10.0
+streamlit
+numpy
+pandas
+pillow
+tensorflow-cpu
