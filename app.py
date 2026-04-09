@@ -10,14 +10,6 @@ import streamlit as st
 from PIL import Image, ImageOps
 import requests
 
-try:
-    import tensorflow as tf
-except Exception as e:  # pragma: no cover
-    raise RuntimeError(
-        "TensorFlow is required to run this app. "
-        "Install dependencies with: pip install -r requirements.txt"
-    ) from e
-
 
 MODEL_PATH = Path("models/breed_model.tflite")
 LABELS_PATH = Path("models/labels.txt")
@@ -69,7 +61,42 @@ def _load_labels_from_class_indices(path: Path) -> list[str]:
 
 @st.cache_resource(show_spinner=False)
 def _load_interpreter(model_path: Path):
-    interpreter = tf.lite.Interpreter(model_path=str(model_path))
+    interpreter = None
+    errors: list[str] = []
+
+    # Preferred runtime for hosted environments where full TensorFlow is unavailable.
+    try:
+        from ai_edge_litert.interpreter import Interpreter as LiteRtInterpreter
+
+        interpreter = LiteRtInterpreter(model_path=str(model_path))
+    except Exception as e:
+        errors.append(f"ai-edge-litert: {e}")
+
+    # Fallback to tflite-runtime if available.
+    if interpreter is None:
+        try:
+            from tflite_runtime.interpreter import Interpreter as TFLiteRuntimeInterpreter
+
+            interpreter = TFLiteRuntimeInterpreter(model_path=str(model_path))
+        except Exception as e:
+            errors.append(f"tflite-runtime: {e}")
+
+    # Local/dev fallback when TensorFlow is installed.
+    if interpreter is None:
+        try:
+            import tensorflow as tf  # type: ignore
+
+            interpreter = tf.lite.Interpreter(model_path=str(model_path))
+        except Exception as e:
+            errors.append(f"tensorflow: {e}")
+
+    if interpreter is None:
+        raise RuntimeError(
+            "No compatible TFLite interpreter found. Install one of: "
+            "`ai-edge-litert`, `tflite-runtime`, or `tensorflow`.\n"
+            + "\n".join(errors)
+        )
+
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
@@ -83,8 +110,9 @@ def _preprocess_image(image: Image.Image, preprocessing: str) -> np.ndarray:
     x = np.expand_dims(x, axis=0)  # (1, H, W, 3)
 
     if preprocessing == "efficientnet":
-        # Works when training used EfficientNet preprocessing (often identity for TF EfficientNet).
-        x = tf.keras.applications.efficientnet.preprocess_input(x)
+        # TensorFlow-free path for hosted environments: keep identity behavior.
+        # For many TF EfficientNet pipelines, this is equivalent.
+        pass
     elif preprocessing == "scale_0_1":
         x = x / 255.0
     elif preprocessing == "raw_0_255":
