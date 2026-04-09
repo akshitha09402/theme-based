@@ -1,5 +1,5 @@
 streamlit>=1.34
-tensorflow-cpu>=2.13
-numpy>=1.23
+tensorflow-cpu==2.19.1
+numpy>=1.23,<2.2
 pillow>=10.0
 requests>=2.31
