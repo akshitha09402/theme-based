@@ -1,5 +1,4 @@
 streamlit
-numpy
-pandas
+numpy==1.23.5
 pillow
-tflite-runtime
+tensorflow-cpu==2.10.0
